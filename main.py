@@ -1,5 +1,6 @@
 import time
 import math
+import _thread
 
 from picographics import PicoGraphics, DISPLAY_PICO_EXPLORER # type: ignore
 
@@ -42,8 +43,7 @@ for column in range(0, 10):
 font_scale = 2
 text_y = int(HEIGHT / 2 - 10 * font_scale)
 
-previous_text_color = 0
-
+current_text_color = 0
 currentText = 0
 texts = [
     "She's up all night",
@@ -55,6 +55,31 @@ texts = [
     "I'm up all night",
     "to get lucky",
 ]
+
+# Second thread to animate the text so we can use sleeps for convenience.
+def animate_text():
+    global current_text_color
+    global currentText
+    next_text_color = 1
+    while True:
+        current_text_color += next_text_color
+        if current_text_color >= 10:
+            current_text_color = 10
+            next_text_color = -1
+            time.sleep(1.2)
+        elif current_text_color <= 0:
+            current_text_color = 0
+            next_text_color = 1
+            currentText += 1
+            if currentText >= len(texts):
+                currentText = 0
+            time.sleep(0.7)
+        else:
+            time.sleep(0.05)
+
+# Start the second thread.
+_thread.start_new_thread(animate_text, ())
+
 previous_ms = time.ticks_ms()
 
 # Main loop.
@@ -73,14 +98,6 @@ while True:
         display.set_pen(get_pen(int(ball.radius), ball.row + ball.column / 100))
         if ball.radius > 1:
             display.circle(int(ball.x), int(ball.y), int(ball.radius))
-
-    # Switch text when the ball in the bottom right corner becomes small.
-    current_text_color = math.ceil(balls[99].radius - 1)
-    if previous_text_color == 1 and current_text_color == 0:
-        currentText = currentText + 1
-        if currentText >= len(texts):
-            currentText = 0
-    previous_text_color = current_text_color
 
     # Draw text if color is more than 0.
     if current_text_color > 0:
